@@ -40,6 +40,7 @@ There are few things that can be configured via environment variables:
 
     LFS_LISTEN      # The address:port the server listens on, default: "tcp://:8080"
     LFS_HOST        # The host used when the server generates URLs, default: "localhost:8080"
+    LFS_EXTORIGIN   # To be used when behind a reverse proxy, default: not set
     LFS_METADB      # The database file the server uses to store meta information, default: "lfs.db"
     LFS_CONTENTPATH # The path where LFS files are store, default: "lfs-content"
     LFS_ADMINUSER   # An administrator username, default: not set
