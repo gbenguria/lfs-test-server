@@ -122,12 +122,12 @@ func (t *TusServer) Create(oid string, size int64, r *http.Request) (string, err
 	req.Header.Set("Upload-Length", fmt.Sprintf("%d", size))
 	req.Header.Set("Upload-Metadata", fmt.Sprintf("oid %s", oid))
 	if (Config.TusBehindProxy == "true") {
-		XForwardedHost := r.Header.Get("X-Forwarded-Host")
-		XForwardedProto := r.Header.Get("X-Forwarded-Proto")
-		XForwardedPort := r.Header.Get("X-Forwarded-Port")
-		req.Header.Set("X-Forwarded-Host", XForwardedHost)
-		req.Header.Set("X-Forwarded-Proto", XForwardedProto)
-		req.Header.Set("X-Forwarded-Port", XForwardedPort)
+		xForwardedHost := r.Header.Get("X-Forwarded-Host")
+		xForwardedProto := r.Header.Get("X-Forwarded-Proto")
+		xForwardedPort := r.Header.Get("X-Forwarded-Port")
+		req.Header.Set("X-Forwarded-Host", xForwardedHost)
+		req.Header.Set("X-Forwarded-Proto", xForwardedProto)
+		req.Header.Set("X-Forwarded-Port", xForwardedPort)
 	}
 
 	// print upload metadata

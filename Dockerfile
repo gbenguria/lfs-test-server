@@ -15,7 +15,7 @@ COPY --from=builder /go/src/github.com/git-lfs/lfs-test-server/lfs-test-server /
 
 ARG TUSD_DEB_URL=https://github.com/tus/tusd/releases/download/v1.10.1/tusd_snapshot_amd64.deb
 
-RUN apt-get update && apt-get install -y wget jq && \
+RUN apt-get update && apt-get install -y wget && \
     wget -O tusd.deb $TUSD_DEB_URL && \
     dpkg -i tusd.deb && \
     rm tusd* && \
