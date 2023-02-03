@@ -11,19 +11,21 @@ import (
 // environment variables, prefixed by keyPrefix. Default values can be added
 // via tags.
 type Configuration struct {
-	Listen      string `config:"tcp://:8080"`
-	Host        string `config:"localhost:8080"`
-	ExtOrigin   string `config:""` // consider lfs-test-server may behind a reverse proxy
-	MetaDB      string `config:"lfs.db"`
-	ContentPath string `config:"lfs-content"`
-	AdminUser   string `config:""`
-	AdminPass   string `config:""`
-	Cert        string `config:""`
-	Key         string `config:""`
-	Scheme      string `config:"http"`
-	Public      string `config:"public"`
-	UseTus      string `config:"false"`
-	TusHost     string `config:"localhost:1080"`
+	Listen          string `config:"tcp://:8080"`
+	Host            string `config:"localhost:8080"`
+	ExtOrigin       string `config:""` // consider lfs-test-server may behind a nat or reverse proxy that make the origin different from the host
+	MetaDB          string `config:"lfs.db"`
+	ContentPath     string `config:"lfs-content"`
+	AdminUser       string `config:""`
+	AdminPass       string `config:""`
+	Cert            string `config:""`
+	Key             string `config:""`
+	Scheme          string `config:"http"`
+	Public          string `config:"public"`
+	UseTus          string `config:"false"`
+	TusHost         string `config:"localhost:1080"`
+	TusBehindProxy  string `config:"false"`
+	TusExtOrigin    string `config:""` // consider lfs-test-server may behind a nat or reverse proxy that make the origin different from the host
 }
 
 func (c *Configuration) IsHTTPS() bool {
@@ -78,5 +80,9 @@ func init() {
 
 	if Config.ExtOrigin == "" {
 		Config.ExtOrigin = fmt.Sprintf("%s://%s", Config.Scheme, Config.Host)
+	}
+
+	if Config.TusExtOrigin == "" {
+		Config.TusExtOrigin = fmt.Sprintf("http://%s", Config.TusHost)
 	}
 }

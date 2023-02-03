@@ -111,9 +111,9 @@ func (v *RequestVars) DownloadLink() string {
 }
 
 // UploadLink builds a URL to upload the object.
-func (v *RequestVars) UploadLink(useTus bool) string {
+func (v *RequestVars) UploadLink(useTus bool, r *http.Request) string {
 	if useTus {
-		return v.tusLink()
+		return v.tusLink(r)
 	}
 	return v.internalLink("objects")
 }
@@ -134,8 +134,8 @@ func (v *RequestVars) internalLink(subpath string) string {
 	return fmt.Sprintf("%s%s", Config.ExtOrigin, path)
 }
 
-func (v *RequestVars) tusLink() string {
-	link, err := tusServer.Create(v.Oid, v.Size)
+func (v *RequestVars) tusLink(r *http.Request) string {
+	link, err := tusServer.Create(v.Oid, v.Size, r)
 	if err != nil {
 		logger.Fatal(kv{"fn": fmt.Sprintf("Unable to create tus link for %s: %v", v.Oid, err)})
 	}
@@ -262,7 +262,7 @@ func (a *App) GetMetaHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		enc := json.NewEncoder(w)
-		enc.Encode(a.Represent(rv, meta, true, false, false))
+		enc.Encode(a.Represent(rv, meta, true, false, false, r))
 	}
 
 	logRequest(r, 200)
@@ -286,7 +286,7 @@ func (a *App) PostHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(sentStatus)
 
 	enc := json.NewEncoder(w)
-	enc.Encode(a.Represent(rv, meta, meta.Existing, true, false))
+	enc.Encode(a.Represent(rv, meta, meta.Existing, true, false, r))
 	logRequest(r, sentStatus)
 }
 
@@ -310,7 +310,7 @@ func (a *App) BatchHandler(w http.ResponseWriter, r *http.Request) {
 	for _, object := range bv.Objects {
 		meta, err := a.metaStore.Get(object)
 		if err == nil && a.contentStore.Exists(meta) { // Object is found and exists
-			responseObjects = append(responseObjects, a.Represent(object, meta, true, false, false))
+			responseObjects = append(responseObjects, a.Represent(object, meta, true, false, false, r))
 			continue
 		}
 
@@ -318,7 +318,7 @@ func (a *App) BatchHandler(w http.ResponseWriter, r *http.Request) {
 		if bv.Operation == "upload" {
 			meta, err = a.metaStore.Put(object)
 			if err == nil {
-				responseObjects = append(responseObjects, a.Represent(object, meta, false, true, useTus))
+				responseObjects = append(responseObjects, a.Represent(object, meta, false, true, useTus, r))
 			}
 		} else {
 			rep := &Representation{
@@ -547,7 +547,7 @@ func (a *App) DeleteLockHandler(w http.ResponseWriter, r *http.Request) {
 
 // Represent takes a RequestVars and Meta and turns it into a Representation suitable
 // for json encoding
-func (a *App) Represent(rv *RequestVars, meta *MetaObject, download, upload, useTus bool) *Representation {
+func (a *App) Represent(rv *RequestVars, meta *MetaObject, download, upload, useTus bool, r *http.Request) *Representation {
 	rep := &Representation{
 		Oid:     meta.Oid,
 		Size:    meta.Size,
@@ -569,7 +569,7 @@ func (a *App) Represent(rv *RequestVars, meta *MetaObject, download, upload, use
 	}
 
 	if upload {
-		rep.Actions["upload"] = &link{Href: rv.UploadLink(useTus), Header: header}
+		rep.Actions["upload"] = &link{Href: rv.UploadLink(useTus, r), Header: header}
 		if useTus {
 			rep.Actions["verify"] = &link{Href: rv.VerifyLink(), Header: verifyHeader}
 		}

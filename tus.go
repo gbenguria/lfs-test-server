@@ -44,10 +44,20 @@ func (t *TusServer) Start() {
 	if len(hostparts) > 1 {
 		port = hostparts[1]
 	}
-	t.tusProcess = exec.Command("tusd",
+
+	if (Config.TusBehindProxy == "true") {
+		t.tusProcess = exec.Command("tusd",
+		"-upload-dir", t.dataPath,
+		"-host", host,
+		"-port", port,
+		"-behind-proxy")
+	} else {
+		t.tusProcess = exec.Command("tusd",
 		"-upload-dir", t.dataPath,
 		"-host", host,
 		"-port", port)
+	}
+
 	// Make sure tus server is started before continuing
 	var procWait sync.WaitGroup
 	procWait.Add(1)
@@ -84,7 +94,7 @@ func (t *TusServer) Start() {
 	}(t.tusProcess)
 	procWait.Wait()
 	logger.Log(kv{"fn": "Start", "msg": "Tus server started"})
-	t.tusBaseUrl = fmt.Sprintf("http://%s:%s/files/", host, port)
+	t.tusBaseUrl = fmt.Sprintf("%s/files/", Config.TusExtOrigin)
 	t.httpClient = &http.Client{}
 	t.oidToTusUrl = make(map[string]string)
 }
@@ -101,7 +111,7 @@ func (t *TusServer) Stop() {
 
 // Create a new upload URL for the given object
 // Required to call CREATE on the tus API before uploading but not part of LFS API
-func (t *TusServer) Create(oid string, size int64) (string, error) {
+func (t *TusServer) Create(oid string, size int64, r *http.Request) (string, error) {
 	t.serverMutex.Lock()
 	defer t.serverMutex.Unlock()
 	req, err := http.NewRequest("POST", t.tusBaseUrl, nil)
@@ -111,6 +121,17 @@ func (t *TusServer) Create(oid string, size int64) (string, error) {
 	req.Header.Set("Tus-Resumable", "1.0.0")
 	req.Header.Set("Upload-Length", fmt.Sprintf("%d", size))
 	req.Header.Set("Upload-Metadata", fmt.Sprintf("oid %s", oid))
+	if (Config.TusBehindProxy == "true") {
+		XForwardedHost := r.Header.Get("X-Forwarded-Host")
+		XForwardedProto := r.Header.Get("X-Forwarded-Proto")
+		XForwardedPort := r.Header.Get("X-Forwarded-Port")
+		req.Header.Set("X-Forwarded-Host", XForwardedHost)
+		req.Header.Set("X-Forwarded-Proto", XForwardedProto)
+		req.Header.Set("X-Forwarded-Port", XForwardedPort)
+	}
+
+	// print upload metadata
+	logger.Log(kv{"fn": "Create", "msg": fmt.Sprintf("Upload-Metadata: %s", req.Header.Get("Upload-Metadata"))})
 
 	res, err := t.httpClient.Do(req)
 	if err != nil {
@@ -137,7 +158,7 @@ func (t *TusServer) Finish(oid string, store *ContentStore) error {
 		return fmt.Errorf("Unable to find upload for %s", oid)
 	}
 	parts := strings.Split(loc, "/")
-	filename := filepath.Join(t.dataPath, fmt.Sprintf("%s.bin", parts[len(parts)-1]))
+	filename := filepath.Join(t.dataPath, fmt.Sprintf("%s", parts[len(parts)-1]))
 	stat, err := os.Stat(filename)
 	if err != nil {
 		return err
