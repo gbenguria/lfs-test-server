@@ -114,7 +114,13 @@ func (t *TusServer) Stop() {
 func (t *TusServer) Create(oid string, size int64, r *http.Request) (string, error) {
 	t.serverMutex.Lock()
 	defer t.serverMutex.Unlock()
-	req, err := http.NewRequest("POST", t.tusBaseUrl, nil)
+
+	tusPath := t.tusBaseUrl
+	method := "POST"
+
+	logger.Log(kv{"fn": "Create", "msg": fmt.Sprintf("Creating %s tus upload for oid %s at %s", method, oid, tusPath)})
+
+	req, err := http.NewRequest(method, tusPath, nil)
 	if err != nil {
 		return "", err
 	}
